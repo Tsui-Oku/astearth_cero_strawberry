@@ -184,7 +184,7 @@
 <div id="caption"></div>
 <div id="clearlogo"><div class="q">QUEST CLEAR</div><div class="s">アスティと風の杖</div><button id="again" type="button">もういちど あそぶ</button></div>
 
-<section id="title" class="panel"><p id="ver" style="position:fixed;left:0;right:0;bottom:calc(8px + env(safe-area-inset-bottom,0px));text-align:center;font-size:.7rem;letter-spacing:.12em;opacity:.7;pointer-events:none;z-index:1">版：アスティと風の杖（v2）</p>
+<section id="title" class="panel"><p id="ver" style="position:fixed;left:0;right:0;bottom:calc(8px + env(safe-area-inset-bottom,0px));text-align:center;font-size:.7rem;letter-spacing:.12em;opacity:.7;pointer-events:none;z-index:1">版：アスティと風の杖（v6）</p>
   <div class="tbg" id="tbg"></div>
   <h1>アスティと風の杖<small>― セロと苺の、ある一日 ―</small></h1>
   <p class="lead">風車小屋の朝。アスティの、小さな冒険がはじまります。</p>
@@ -410,7 +410,7 @@
     if (uP2.y > 0.5 && uP2.y < 1.5) {
       float wt = smoothstep(0.10, 0.26, -p.z) * smoothstep(0.10, -0.12, p.y);
       p.x += sin(uTime * 2.6 + p.z * 7.0 + p.y * 3.0) * uP2.z * wt * (0.5 + 0.5 * uMove);
-    } else if (uP2.y > 1.5) {
+    } else if (uP2.y > 1.5 && uP2.y < 2.5) {
       tailMask = smoothstep(-0.17, -0.24, aPos.x);
       float wt = tailMask * smoothstep(0.55, 0.30, p.y);
       p.z += sin(uTime * 2.0 + p.y * 3.5) * uP2.z * wt * (0.4 + 0.6 * uMove);
@@ -425,9 +425,12 @@
     p.y = mix(p.y, ny, wArm); p.z = mix(p.z, nz, wArm);
     // 脚：腰を支点に前後にふる
     float wLeg = smoothstep(hip + 0.03, hip - 0.12, aPos.y) * (1.0 - tailMask);
-    float tl = la * sin(uPhase) * side;
-    c = cos(tl); s = sin(tl); dy = p.y - hip;
-    ny = hip + dy * c - p.z * s; nz = dy * s + p.z * c;
+    if (uP2.y > 2.5 && uP2.y < 3.5) wLeg *= (1.0 - smoothstep(0.18, 0.30, abs(dx))) * smoothstep(-0.17, -0.09, aPos.z);
+    float lz0 = 0.0, sideL = side;
+    if (uP2.y > 3.5) { lz0 = uP1.z * sign(aPos.z); sideL = clamp(dx / uP1.y, -1.0, 1.0) * clamp(aPos.z / uP1.w, -1.0, 1.0); }
+    float tl = la * sin(uPhase) * sideL;
+    c = cos(tl); s = sin(tl); dy = p.y - hip; float dzl = p.z - lz0;
+    ny = hip + dy * c - dzl * s; nz = lz0 + dy * s + dzl * c;
     p.y = mix(p.y, ny, wLeg); p.z = mix(p.z, nz, wLeg);
     // 髪やリボン（体から遠いところ）は、歩くとゆれる
     float swW = smoothstep(uP3.w, uP3.w + 0.12, abs(dx)) * smoothstep(0.62, 0.30, aPos.y);
@@ -828,7 +831,9 @@
   DT.berry = [paintBerry(51), paintBerry(52)].map(c => makeTex(c, c.width, c.height));
   DT.mark = makeTex(paintMark(), 96, 128);
   // 窓の外の景色（絵）
-  PT.view = texRepeat(await load('assets/view_window.webp'), false);
+  { let viewImg;   // 窓の外の景色。絵が読みこめなくても、止まらずに、青空で代用する
+    try { viewImg = await load('assets/view_window.webp'); } catch (e) { const c = mk(256, 144), g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 144); gr.addColorStop(0, '#7fb8ee'); gr.addColorStop(0.6, '#cfe6f5'); gr.addColorStop(1, '#a8cf88'); g.fillStyle = gr; g.fillRect(0, 0, 256, 144); viewImg = c; }
+    PT.view = texRepeat(viewImg, false); }
 
   /* ===== 部品を作る道具 ===== */
   const BX = geoBox(), CY = geoCyl(1), CN = geoCyl(0), SPH = geoSph(), QD = geoQuad(), FLT = geoFlat();
@@ -981,12 +986,18 @@
   const KIND = {
     asti: { key: 'asti', scale: ASTI_H / MODEL_H, foot: 0.954, P0: [-0.33, 0.45, 0.55, 0.15], P1: [-0.007, 0.05, 0.17, 0.24], P2: [0.62, 0, 0, 0.04], P3: [0.30, 0.36, 0.035, 0.30], hy: 0.70, faceDist: 0.95 }
   };
-  { const K = KIND.asti; K.dStep = 2 * K.P2[0] * K.scale * Math.sin(K.P0[2]); K.headY = (K.hy + K.foot) * K.scale; }
+  // ハヴェル：青いマントの旅人。マントは足といっしょに振らない（P2の2つ目が3＝マント）
+  KIND.havel = { key: 'havel', scale: 1.82 / 1.901, foot: 0.952, P0: [-0.05, 0.45, 0.40, 0.0], P1: [0.0, 0.12, 0.17, 0.24], P2: [0.90, 3, 0, 0.03], P3: [0.30, 0.36, 0.05, 0.28], hy: 0.78, faceDist: 1.2 };
+  // セロ：宙に浮いて、ついてくる（float＝地面からのういている高さ）
+  KIND.cero = { key: 'cero', scale: 1.6 / 1.902, foot: 0.952, float: 0.55, P0: [-0.12, 0.52, 0.18, 0.12], P1: [0.0, 0.14, 0.17, 0.24], P2: [0.832, 0, 0, 0.0], P3: [9, 10, 0, 9], hy: 0.76, faceDist: 1.15 };
+  // セロ馬（ユニコーン）：四つ足。P1は（中心x, 足の左右のはば, 前足・後ろ足のz, 前後のざかい目）。headFwd＝顔が体の中心より前にある距離
+  KIND.unicorn = { key: 'unicorn', scale: 1.35, foot: 0.595, P0: [-0.18, 0.2, 0.40, 0.0], P1: [0.0, 0.10, 0.33, 0.15], P2: [0.415, 4, 0, 0.0], P3: [9, 10, 0.05, 0.22], hy: 0.42, faceDist: 1.6, headFwd: 0.75 * 1.35 };
+  for (const K of Object.values(KIND)) { K.dStep = 2 * K.P2[0] * K.scale * Math.sin(K.P0[2]); K.headY = (K.hy + K.foot) * K.scale; }
   const ENT = {};
   const mkE = (id, type) => ({ id, type, x: 0, z: 0, y: 0, vx: 0, vz: 0, dirX: 0, dirZ: 1, yaw: 0, ph: 0, mv: 0, moving: false, target: null, vis: false, pop: 0, lie: 0, floatY: 0, speed: 0 });
   for (const [id, type] of [['asti', 'mesh'], ['cero', 'fig'], ['havel', 'fig'], ['unicorn', 'fig']]) ENT[id] = mkE(id, type);
-  const kindOf = e => (e.type === 'mesh' ? KIND.asti : FIGS[e.id]);
-  const headYOf = e => (e.type === 'mesh' ? KIND.asti.headY : FIGS[e.id].headY) + e.floatY + e.y;
+  const kindOf = e => (e.type === 'mesh' ? KIND[e.id] : FIGS[e.id]);
+  const headYOf = e => (e.type === 'mesh' ? KIND[e.id].headY : FIGS[e.id].headY) + e.floatY + e.y;
   const NAME = { asti: 'アスティ', cero: 'セロ', havel: 'ハヴェル', unicorn: 'セロ' };
 
   /* ===== 場面と明かり ===== */
@@ -1072,7 +1083,7 @@
       steerE(e, want, spd, dt);
       if (!e.moving) { const fx = lead.x - e.x, fz = lead.z - e.z, fd = Math.hypot(fx, fz); if (fd > 0.01) { const k2 = 1 - Math.exp(-3 * dt); e.dirX += (fx / fd - e.dirX) * k2; e.dirZ += (fz / fd - e.dirZ) * k2; } }
     });
-    for (const id of ['cero', 'unicorn']) { const e = ENT[id]; if (id === 'cero' || e.vis) e.floatY = id === 'cero' ? 0.95 + 0.07 * Math.sin(time * 2.1) : 0; }
+    for (const id of ['cero', 'unicorn']) { const e = ENT[id]; if (id === 'cero' || e.vis) e.floatY = id === 'cero' ? (e.type === 'mesh' ? KIND.cero.float : 0.95) + 0.07 * Math.sin(time * 2.1) : 0; }
     for (const id of ['havel']) { const e = ENT[id]; if (e.vis && !followers.includes(id)) { const fx = a.x - e.x, fz = a.z - e.z, fd = Math.hypot(fx, fz); if (fd > 0.01 && fd < 7) { const k2 = 1 - Math.exp(-2 * dt); e.dirX += (fx / fd - e.dirX) * k2; e.dirZ += (fz / fd - e.dirZ) * k2; e.yaw += (Math.atan2(e.dirX, e.dirZ) - e.yaw) * k2; } } }
   }
 
@@ -1120,12 +1131,12 @@
       drawPart(p.g, mulN(base, M), p.m);
     }
   }
-  function drawAsti(e, shadowPass) {
-    const K = KIND.asti, M = MESHES.asti, u = MP.u; if (!M) return;
+  function drawMeshChar(e, shadowPass) {
+    const K = KIND[e.id], M = MESHES[K.key], u = MP.u; if (!M) return;
     const dc = Math.hypot(camState.pos[0] - e.x, camState.pos[1] - headYOf(e), camState.pos[2] - e.z), LV = (!shadowPass && dc < 3.8) ? M.hi : M.lo;
     gl.useProgram(MP.p); gl.bindVertexArray(LV.vao); usedProg = 'mp';
     const s = K.scale * Math.max(0.001, 1 - Math.pow(1 - e.pop, 3));
-    const model = mulN(M4.T(e.x, e.y + s * K.foot, e.z), M4.RY(e.yaw), M4.RX(-e.lie * Math.PI / 2), M4.S(s, s, s));
+    const model = mulN(M4.T(e.x, e.y + e.floatY + s * K.foot, e.z), M4.RY(e.yaw), M4.RX(-e.lie * Math.PI / 2 + (e.floatY > 0 ? 0.12 * e.mv : 0)), M4.S(s, s, s));
     gl.uniformMatrix4fv(u.uVP, false, camState.VP); gl.uniformMatrix4fv(u.uModel, false, model);
     gl.uniform1f(u.uPhase, e.ph); gl.uniform1f(u.uMove, e.mv); gl.uniform1f(u.uTime, time); setU3(u.uSun, LG.sunV);
     gl.uniform4fv(u.uP0, K.P0); gl.uniform4fv(u.uP1, K.P1); gl.uniform4fv(u.uP2, K.P2); gl.uniform4fv(u.uP3, K.P3);
@@ -1163,14 +1174,14 @@
     gl.depthMask(false);
     for (const it of items) {
       if (it.d) { if (!it.d.shadow || it.dep > 40) continue; useSP(); const d = it.d; drawSprite(d.tex, d.x, d.z, d.h * d.tex.w / d.tex.h * 0.8, d.h, 0.5, { mode: 1, alpha: LG.shadow * 0.9 }); }
-      else if (it.e.type === 'mesh') drawAsti(it.e, true);
+      else if (it.e.type === 'mesh') drawMeshChar(it.e, true);
       else { usePP(); drawFigure(it.e, true); }
     }
     gl.depthMask(true);
     // 本体（奥から順に）
     for (const it of items) {
       if (it.d) { useSP(); gl.depthMask(false); drawSprite(it.d.tex, it.d.x, it.d.z, it.d.h * it.d.tex.w / it.d.tex.h, it.d.h, 0.5, { mode: 0, sway: reduce ? 0 : it.d.sway }); gl.depthMask(true); }
-      else if (it.e.type === 'mesh') drawAsti(it.e, false);
+      else if (it.e.type === 'mesh') drawMeshChar(it.e, false);
       else { usePP(); drawFigure(it.e, false); }
     }
   }
@@ -1868,7 +1879,7 @@
   /* ===== 起動 ===== */
   loadScene('hill'); placeE('asti', -1.5, -1.8, 0.6); ENT.asti.pop = 1;
   { const ok = await loadModel('asti'); if (!ok) { el('msg').textContent = 'アスティのデータを読みこめませんでした。ネットにつながる場所で、もう一度ひらいてください。'; el('msg').style.display = 'flex'; return; } }
-  PT.view && 0;
+  { const hv = await loadModel('havel'); if (hv) ENT.havel.type = 'mesh'; const ce = await loadModel('cero'); if (ce) ENT.cero.type = 'mesh'; const un = await loadModel('unicorn'); if (un) ENT.unicorn.type = 'mesh'; }
   el('tbg').style.backgroundImage = 'url(' + ASSET.title_bg + ')';
   el('start').disabled = false; el('start').textContent = 'はじめる'; el('start').addEventListener('click', beginGame);
   el('again').addEventListener('click', () => location.reload());
@@ -1886,7 +1897,7 @@
     } else if (mode === 'title') { cam.yaw += dt * 0.05; }
     if (mode !== 'title') {
       const c = SCN.cam, a = ENT.asti; let tx, ty, tz;
-      if (cam.focus && ENT[cam.focus]) { const fe = ENT[cam.focus]; tx = fe.x; tz = fe.z; ty = headYOf(fe); }
+      if (cam.focus && ENT[cam.focus]) { const fe = ENT[cam.focus], fK = kindOf(fe), fw = (fK && fK.headFwd) || 0; tx = fe.x + Math.sin(fe.yaw) * fw; tz = fe.z + Math.cos(fe.yaw) * fw; ty = headYOf(fe); }
       else { tx = lerp(c.tx, a.x, c.follow); tz = lerp(c.tz, a.z, c.follow); ty = SCN.type === 'room' ? c.ty : 1.0; }
       const k = 1 - Math.exp(-5 * dt); cam.tx += (tx - cam.tx) * k; cam.tz += (tz - cam.tz) * k; cam.ty += (ty - cam.ty) * k;
     }
@@ -1894,7 +1905,7 @@
     if (cam.dTarget != null) { cam.dist += (cam.dTarget - cam.dist) * kk; if (Math.abs(cam.dTarget - cam.dist) < 0.01) cam.dTarget = null; }
     if (cam.pTarget != null) { cam.pitch += (cam.pTarget - cam.pitch) * kk; if (Math.abs(cam.pTarget - cam.pitch) < 0.003) cam.pTarget = null; }
     if (cam.yTarget != null) { let dy = cam.yTarget - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); cam.yaw += dy * kk; if (Math.abs(dy) < 0.01) cam.yTarget = null; }
-    if (window.__dbg && window.__dbg.force) { const F = window.__dbg.force; ENT.asti.ph = F.ph; ENT.asti.mv = F.mv; }
+    if (window.__dbg && window.__dbg.force) { const F = window.__dbg.force; for (const k of Object.keys(ENT)) { ENT[k].ph = F.ph; ENT[k].mv = F.mv; } }
     updateCamera(); placeBubble(); updateMark(); render();
     requestAnimationFrame(frame);
   }

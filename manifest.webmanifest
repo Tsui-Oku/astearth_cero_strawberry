@@ -1,7 +1,7 @@
 {
-  "name": "大自然をあるく 3D",
-  "short_name": "大自然をあるく",
-  "description": "3Dの浜辺を、2人で歩くゲーム",
+  "name": "アスティと風の杖",
+  "short_name": "アスティの冒険",
+  "description": "風車小屋の朝から始まる、アスティの小さな冒険",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
