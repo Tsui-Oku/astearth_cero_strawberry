@@ -1,5 +1,5 @@
 // 一度開くと、ネットがなくても遊べるように、ファイルを端末に保存する
-const SHELL = 'asti-v6';        // アプリ本体（新しくするときは、この番号を上げる）
+const SHELL = 'asti-v7';        // アプリ本体（新しくするときは、この番号を上げる）
 const MUSIC = 'walk3d-music';     // 曲（アプリを新しくしても残す）
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 self.addEventListener('install', e => {

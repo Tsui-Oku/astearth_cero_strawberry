@@ -162,6 +162,8 @@
   @keyframes bob { 50% { margin-top: -8px; } }
   #battleVid { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; z-index: 23; display: none; }
   #battleVid.on { display: block; }
+  #vidHint { position: fixed; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 24; font-size: .74rem; letter-spacing: .12em; color: #fff; opacity: 0; transition: opacity .6s; text-shadow: 0 1px 6px rgba(0,0,0,.8); pointer-events: none; }
+  #vidHint.on { opacity: .75; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#16202b">
@@ -175,7 +177,8 @@
 <body>
 <canvas id="gl" role="img" aria-label="アスティの冒険の3D画面"></canvas>
 <div id="cg"><div class="cgimg" id="cgimg"></div><div class="bar top"></div><div class="bar bot"></div></div>
-<video id="battleVid" playsinline></video>
+<video id="battleVid" playsinline preload="auto"></video>
+<div id="vidHint">タップで、スキップ</div>
 <div id="shock"><span id="shockTxt">モンスターが出た！</span></div>
 <div id="bubble"><div class="who"></div><div class="txt"></div><span class="next">▼</span><div class="tail"></div></div>
 <div id="hudObj"><b>もくてき</b><span id="objTxt"></span></div>
@@ -184,7 +187,7 @@
 <div id="caption"></div>
 <div id="clearlogo"><div class="q">QUEST CLEAR</div><div class="s">アスティと風の杖</div><button id="again" type="button">もういちど あそぶ</button></div>
 
-<section id="title" class="panel"><p id="ver" style="position:fixed;left:0;right:0;bottom:calc(8px + env(safe-area-inset-bottom,0px));text-align:center;font-size:.7rem;letter-spacing:.12em;opacity:.7;pointer-events:none;z-index:1">版：アスティと風の杖（v6）</p>
+<section id="title" class="panel"><p id="ver" style="position:fixed;left:0;right:0;bottom:calc(8px + env(safe-area-inset-bottom,0px));text-align:center;font-size:.7rem;letter-spacing:.12em;opacity:.7;pointer-events:none;z-index:1">版：アスティと風の杖（v7）</p>
   <div class="tbg" id="tbg"></div>
   <h1>アスティと風の杖<small>― セロと苺の、ある一日 ―</small></h1>
   <p class="lead">風車小屋の朝。アスティの、小さな冒険がはじまります。</p>
@@ -989,7 +992,7 @@
   // ハヴェル：青いマントの旅人。マントは足といっしょに振らない（P2の2つ目が3＝マント）
   KIND.havel = { key: 'havel', scale: 1.82 / 1.901, foot: 0.952, P0: [-0.05, 0.45, 0.40, 0.0], P1: [0.0, 0.12, 0.17, 0.24], P2: [0.90, 3, 0, 0.03], P3: [0.30, 0.36, 0.05, 0.28], hy: 0.78, faceDist: 1.2 };
   // セロ：宙に浮いて、ついてくる（float＝地面からのういている高さ）
-  KIND.cero = { key: 'cero', scale: 1.6 / 1.902, foot: 0.952, float: 0.55, P0: [-0.12, 0.52, 0.18, 0.12], P1: [0.0, 0.14, 0.17, 0.24], P2: [0.832, 0, 0, 0.0], P3: [9, 10, 0, 9], hy: 0.76, faceDist: 1.15 };
+  KIND.cero = { key: 'cero', scale: 1.6 / 1.902, foot: 0.952, float: 0.55, P0: [-0.12, 0.52, 0.30, 0.22], P1: [0.0, 0.14, 0.17, 0.24], P2: [0.832, 0, 0, 0.0], P3: [9, 10, 0.03, 0.30], hy: 0.76, faceDist: 1.15 };
   // セロ馬（ユニコーン）：四つ足。P1は（中心x, 足の左右のはば, 前足・後ろ足のz, 前後のざかい目）。headFwd＝顔が体の中心より前にある距離
   KIND.unicorn = { key: 'unicorn', scale: 1.35, foot: 0.595, P0: [-0.18, 0.2, 0.40, 0.0], P1: [0.0, 0.10, 0.33, 0.15], P2: [0.415, 4, 0, 0.0], P3: [9, 10, 0.05, 0.22], hy: 0.42, faceDist: 1.6, headFwd: 0.75 * 1.35 };
   for (const K of Object.values(KIND)) { K.dStep = 2 * K.P2[0] * K.scale * Math.sin(K.P0[2]); K.headY = (K.hy + K.foot) * K.scale; }
@@ -1083,7 +1086,7 @@
       steerE(e, want, spd, dt);
       if (!e.moving) { const fx = lead.x - e.x, fz = lead.z - e.z, fd = Math.hypot(fx, fz); if (fd > 0.01) { const k2 = 1 - Math.exp(-3 * dt); e.dirX += (fx / fd - e.dirX) * k2; e.dirZ += (fz / fd - e.dirZ) * k2; } }
     });
-    for (const id of ['cero', 'unicorn']) { const e = ENT[id]; if (id === 'cero' || e.vis) e.floatY = id === 'cero' ? (e.type === 'mesh' ? KIND.cero.float : 0.95) + 0.07 * Math.sin(time * 2.1) : 0; }
+    for (const id of ['cero', 'unicorn']) { const e = ENT[id]; if (id === 'cero' || e.vis) e.floatY = id === 'cero' ? (e.type === 'mesh' ? KIND.cero.float : 0.95) + (0.06 + 0.07 * e.mv) * Math.sin(time * 2.1) + 0.04 * e.mv : 0; }
     for (const id of ['havel']) { const e = ENT[id]; if (e.vis && !followers.includes(id)) { const fx = a.x - e.x, fz = a.z - e.z, fd = Math.hypot(fx, fz); if (fd > 0.01 && fd < 7) { const k2 = 1 - Math.exp(-2 * dt); e.dirX += (fx / fd - e.dirX) * k2; e.dirZ += (fz / fd - e.dirZ) * k2; e.yaw += (Math.atan2(e.dirX, e.dirZ) - e.yaw) * k2; } } }
   }
 
@@ -1136,9 +1139,10 @@
     const dc = Math.hypot(camState.pos[0] - e.x, camState.pos[1] - headYOf(e), camState.pos[2] - e.z), LV = (!shadowPass && dc < 3.8) ? M.hi : M.lo;
     gl.useProgram(MP.p); gl.bindVertexArray(LV.vao); usedProg = 'mp';
     const s = K.scale * Math.max(0.001, 1 - Math.pow(1 - e.pop, 3));
-    const model = mulN(M4.T(e.x, e.y + e.floatY + s * K.foot, e.z), M4.RY(e.yaw), M4.RX(-e.lie * Math.PI / 2 + (e.floatY > 0 ? 0.12 * e.mv : 0)), M4.S(s, s, s));
+    const model = mulN(M4.T(e.x, e.y + e.floatY + s * K.foot, e.z), M4.RY(e.yaw), M4.RX(-e.lie * Math.PI / 2 + (e.floatY > 0 ? 0.24 * e.mv + 0.04 * Math.sin(time * 1.9) : 0)), M4.RZ(e.floatY > 0 ? Math.sin(time * 1.7) * (0.05 + 0.07 * e.mv) : 0), M4.S(s, s, s));
     gl.uniformMatrix4fv(u.uVP, false, camState.VP); gl.uniformMatrix4fv(u.uModel, false, model);
-    gl.uniform1f(u.uPhase, e.ph); gl.uniform1f(u.uMove, e.mv); gl.uniform1f(u.uTime, time); setU3(u.uSun, LG.sunV);
+    const fl = e.floatY > 0;   // 浮かんでいるキャラは、足ぶみではなく、ゆっくりした「ひらひら」の動きにする
+    gl.uniform1f(u.uPhase, fl ? time * 2.6 : e.ph); gl.uniform1f(u.uMove, fl ? 0.4 + 0.6 * e.mv : e.mv); gl.uniform1f(u.uTime, time); setU3(u.uSun, LG.sunV);
     gl.uniform4fv(u.uP0, K.P0); gl.uniform4fv(u.uP1, K.P1); gl.uniform4fv(u.uP2, K.P2); gl.uniform4fv(u.uP3, K.P3);
     gl.uniform3f(u.uCamPos, camState.pos[0], camState.pos[1], camState.pos[2]); gl.uniform1f(u.uFogD, LG.fog || 0); setU3(u.uFogCol, LG.fogCol);
     if (shadowPass) {
@@ -1719,6 +1723,7 @@
       start() { play(); },
       scene(id) { autoId = SCENE_BGM[id] || 'sunset'; if (S.on) play(); },
       force(id) { forced = id; play(); }, release() { forced = null; play(); },
+      duck(on) { if (eng) eng.master.gain.setTargetAtTime(on ? 0 : S.vol * 0.9, ctx.currentTime, 0.08); if (fileGain) fileGain.gain.setTargetAtTime(on ? 0 : S.vol * 0.9 * curGain, ctx.currentTime, 0.08); },
       se(n) { if (!ensure()) return; if (ctx.state === 'suspended') ctx.resume(); eng.se(n); },
       debug: () => ({ gain: curGain, ctx: ctx && ctx.state, playing, on: S.on, sel: S.sel, vol: S.vol, lib: lib.map(x => x.id), now: nowEl.textContent, paused: audioEl && audioEl.paused, loop: audioEl && audioEl.loop })
     };
@@ -1790,20 +1795,33 @@
   async function monsterEvent() {
     FLG.hunt = true; setMark();
     music.se('shock'); await shockFx('モンスターが出た！');
-    music.force('battle');
-    const played = await playBattleVideo();
-    if (!played) { await caption('― 戦闘 ―', 1600); await caption('（戦闘シーンは、別の映像で）', 2200); }
-    music.release();
+    const played = await playBattleVideo();      // 戦闘の映像（流せないときは、文字と戦闘BGMで代わりにする）
+    if (!played) { music.force('battle'); await caption('― 戦闘 ―', 1600); await caption('（戦闘シーン）', 1800); music.release(); }
     await talk('havel', '今日はもう帰ろう');
     await goScene('dusk', () => { followers.length = 0; ENT.cero.vis = false; ENT.unicorn.vis = false; ENT.havel.vis = false; placeE('asti', -1.0, -2.5, 0); placeE('havel', 1.9, -2.4, -0.4); placeE('unicorn', -2.7, -2.1, 0.4); ENT.unicorn.floatY = 0; ENT.unicorn.pop = 1; });
     await duskEvent();
   }
+  const BATTLE_SRC = 'assets/battle.mp4';
   async function playBattleVideo() {
-    const v = el('battleVid');
-    try { const r = await fetch('assets/battle.mp4', { method: 'HEAD' }); if (!r.ok) return false; } catch (e) { return false; }
-    v.src = 'assets/battle.mp4'; v.classList.add('on'); v.currentTime = 0;
-    try { await v.play(); } catch (e) { v.classList.remove('on'); return false; }
-    await new Promise(res => { v.onended = res; v.onclick = res; }); v.pause(); v.classList.remove('on'); return true;
+    if (!BATTLE_SRC) return false;
+    const v = el('battleVid'), hint = el('vidHint'); let ok = false;
+    music.duck(true);
+    try {
+      v.src = BATTLE_SRC; v.currentTime = 0; v.muted = false;
+      // 読みこみを、最大9秒だけ待つ（こわれていたら、あきらめて文字の戦闘にする）
+      await new Promise((res, rej) => { if (v.readyState >= 3) return res(); v.oncanplay = () => res(); v.onerror = () => rej(new Error('video')); setTimeout(() => rej(new Error('timeout')), 9000); });
+      await fadeTo(true, 350); v.classList.add('on');
+      try { await v.play(); ok = true; } catch (e) { v.muted = true; try { await v.play(); ok = true; } catch (e2) { ok = false; } }
+      if (ok) {
+        await fadeTo(false, 350); hint.classList.add('on'); const t0 = performance.now();
+        await new Promise(res => { v.onended = res; v.onerror = res; v.onclick = () => { if (performance.now() - t0 > 1500) res(); }; });
+        await fadeTo(true, 350);
+      }
+    } catch (e) { ok = false; }
+    v.pause(); v.classList.remove('on'); hint.classList.remove('on'); v.removeAttribute('src'); try { v.load(); } catch (e) {}
+    music.duck(false);
+    if (fadeEl.classList.contains('on')) await fadeTo(false, 600);
+    return ok;
   }
   async function duskEvent() {
     await wait(500);
